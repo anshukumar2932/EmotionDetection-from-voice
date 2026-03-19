@@ -1,0 +1,15 @@
+numpy
+pandas
+matplotlib
+seaborn
+
+librosa
+soundfile
+
+scikit-learn
+
+tensorflow
+
+sounddevice
+
+pickle-mixin
