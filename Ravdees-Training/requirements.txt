@@ -12,4 +12,4 @@ tensorflow
 
 sounddevice
 
-pickle-mixin
+pickle
