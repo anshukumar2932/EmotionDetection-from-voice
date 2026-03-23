@@ -1,0 +1,87 @@
+Yep — this is straightforward now 👍
+
+👉 That `Error: 740` just means:
+**You’re not running PowerShell as Administrator.**
+
+DISM **will not work at all** without elevated privileges.
+
+---
+
+# ✅ Fix (do this exactly)
+
+## 🔓 Step 1 — Open Admin PowerShell
+
+* Press **Start**
+* Type: `powershell`
+* Right-click → **Run as Administrator**
+* Click **Yes**
+
+You should see:
+
+```id="d7y2kq"
+Administrator: Windows PowerShell
+```
+
+---
+
+## 🔧 Step 2 — Run the commands again
+
+Now paste this:
+
+```powershell id="8f9x2c"
+dism /online /disable-feature /featurename:Microsoft-Windows-Subsystem-Linux /norestart
+dism /online /disable-feature /featurename:VirtualMachinePlatform /norestart
+dism /online /disable-feature /featurename:Hyper-V-All /norestart
+```
+
+---
+
+## 🔁 Step 3 — Restart your PC
+
+**Important:** Click **Restart** (not shutdown)
+
+---
+
+## 🔧 Step 4 — Re-enable everything
+
+After reboot, again open **Admin PowerShell** and run:
+
+```powershell id="v4j2lo"
+dism /online /enable-feature /featurename:Microsoft-Windows-Subsystem-Linux /all /norestart
+dism /online /enable-feature /featurename:VirtualMachinePlatform /all /norestart
+dism /online /enable-feature /featurename:Hyper-V-All /all /norestart
+```
+
+---
+
+## 🔁 Step 5 — Restart again
+
+---
+
+## 🚀 Step 6 — Test WSL
+
+```powershell id="u0kz5k"
+wsl
+```
+
+---
+
+# ⚠️ Important tip
+
+If you skip:
+
+* Admin mode ❌
+* Restart ❌
+
+👉 This fix will NOT work.
+
+---
+
+# 💬 If anything fails
+
+Send me:
+
+* Screenshot or error
+* Output of `wsl -l -v`
+
+I’ll take you to the final fix (you’re very close now).
