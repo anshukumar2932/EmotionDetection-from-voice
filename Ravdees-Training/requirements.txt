@@ -9,7 +9,6 @@ soundfile
 scikit-learn
 
 tensorflow
-
 sounddevice
 
 #pickle
