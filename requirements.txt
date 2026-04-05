@@ -1,0 +1,5 @@
+librosa
+sounddevice
+scikit-learn
+numpy
+python
