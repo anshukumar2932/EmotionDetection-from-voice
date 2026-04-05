@@ -1,35 +1,45 @@
-import pickle
 import numpy as np
-import sounddevice as sd
-from extract_features import extract_features
+import librosa
+import tensorflow as tf
+from tensorflow.keras.models import load_model
 
-DURATION  = 5       # seconds to record
-SR        = 22050
-SILENCE   = 0.01    # amplitude threshold
+print("Loading model...")
 
-bundle = pickle.load(open('model.pkl', 'rb'))
-model, scaler, le = bundle['model'], bundle['scaler'], bundle['le']
+model = load_model("emotion_model.h5")
 
-def predict():
-    print("🎙  Listening for 3 seconds...")
-    audio = sd.rec(int(DURATION * SR), samplerate=SR, channels=1, dtype='float32')
-    sd.wait()
-    audio = audio.flatten()
+labels = ['angry', 'disgust', 'fear', 'happy', 'sad', 'neutral']
+max_len = 160
 
-    if np.max(np.abs(audio)) < SILENCE:
-        print("⚠  I'd like you to repeat louder.\n")
-        return
+def extract_features(file_path):
+    signal, sr = librosa.load(file_path, sr=None)
 
-    features = extract_features(y=audio, sr=SR)
-    scaled   = scaler.transform([features])
-    emotion  = le.inverse_transform(model.predict(scaled))[0]
-    print(f"✅ Detected Emotion → {emotion.upper()}\n")
+    mfcc = librosa.feature.mfcc(y=signal, sr=sr, n_mfcc=40)
+    delta = librosa.feature.delta(mfcc)
+    delta2 = librosa.feature.delta(mfcc, order=2)
+    chroma = librosa.feature.chroma_stft(y=signal, sr=sr)
 
-if __name__ == "__main__":
-    print("Voice Emotion Detector  |  Ctrl+C to quit\n")
-    try:
-        while True:
-            input("Press Enter to start recording...")
-            predict()
-    except KeyboardInterrupt:
-        print("\nBye.")
+    features = np.vstack((mfcc, delta, delta2, chroma)).T
+
+    if len(features) < max_len:
+        features = np.pad(features, ((0, max_len - len(features)), (0, 0)))
+    else:
+        features = features[:max_len]
+
+    features = (features - np.mean(features)) / (np.std(features) + 1e-8)
+
+    return np.expand_dims(features, axis=0)
+
+
+def predict_emotion(file_path):
+    features = extract_features(file_path)
+    prediction = model.predict(features)
+    return labels[np.argmax(prediction)]
+
+
+file = input("Enter audio file name: ")
+
+
+print("Predicting...")
+
+result = predict_emotion(file)
+print("Predicted Emotion:", result)
