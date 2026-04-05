@@ -1,154 +1,87 @@
-# Voice Emotion Detector
+# Speech Emotion Recognition — Multi-Model Project
 
-A machine learning project that listens to your voice through a microphone and predicts your emotion in real time. Trained from scratch using the RAVDESS dataset with an MLP classifier — no pretrained models used.
-
-**Achieved Accuracy:** ~84% on speech emotion classification
-
----
-
-## Emotions It Can Detect
-
-`neutral` `calm` `happy` `sad` `angry` `fearful` `disgust` `surprised`
-
----
-
-## Requirements
-
-- Python 3.8 or higher
-- Microphone (built-in or external)
-
----
-
-## Installation
-
-**1. Clone or download this project**
-
-```bash
-git clone <your-repo-url>
-cd voice_emotion
-```
-
-**2. Install dependencies**
-
-```bash
-pip install -r requirements.txt
-```
-
-> If you're on Linux and get a sounddevice error, run:
-> `sudo apt install portaudio19-dev` first
-
----
-
-## Dataset Setup (Required before training)
-
-This project uses the **RAVDESS** dataset (Ryerson Audio-Visual Database of Emotional Speech).
-
-**Step 1:** Go to → https://zenodo.org/record/1188976
-
-**Step 2:** Download `Audio_Speech_Actors_01-24.zip` (~750MB)
-
-**Step 3:** Extract the zip — you'll get folders `Actor_01/` through `Actor_24/`
-
-**Step 4:** Move all `Actor_XX/` folders into the `dataset/` folder of this project
-
-Your structure should look like this:
-```
-voice_emotion/
-├── dataset/
-│   ├── Actor_01/
-│   ├── Actor_02/
-│   └── ... (up to Actor_24)
-├── extract_features.py
-├── train.py
-├── predict.py
-└── requirements.txt
-```
-
-> You can use just Actor_01–13 if storage is a concern. Accuracy will be around 65–70% with half the dataset vs 84%+ with all 24.
-
----
-
-## Training the Model
-
-```bash
-python train.py
-```
-
-This will:
-- Extract audio features (MFCC, Chroma, Mel Spectrogram) from all files in `dataset/`
-- Train an MLP neural network
-- Print accuracy and a classification report
-- Save the model to `model.pkl`
-
-**Training takes 2–5 minutes** depending on your machine. Wait until you see:
-
-```
-Model saved → model.pkl
-```
-
-**Do not run predict.py until training is fully complete.**
-
----
-
-## Running the Detector
-
-```bash
-python predict.py
-```
-
-- Press **Enter** to start a 5-second recording
-- Speak clearly with some emotion
-- The model prints the detected emotion
-- If your voice is too quiet it will ask you to repeat louder
-- Press **Ctrl+C** to quit
-
----
-
-## Adding More Training Data
-
-The model retrains from scratch each time — it does **not** retain previous training. So always keep your existing dataset files when adding new ones.
-
-To add more data:
-1. Add new `.wav` files into `dataset/` (keep Actor folders organized)
-2. Re-run `python train.py`
-3. New `model.pkl` will be generated
-
-**Recommended additional datasets:**
-- [TESS](https://tspace.library.utoronto.ca/handle/1807/24487) — Toronto Emotional Speech Set, 7 emotions, clean audio
-- [CREMA-D](https://github.com/CheyneyComputerScience/CREMA-D) — 7000+ clips, diverse speakers
+A collaborative project exploring multiple ML/DL approaches for speech emotion recognition, trained on different datasets by different contributors. Each folder contains one contributor's independent implementation.
 
 ---
 
 ## Project Structure
 
 ```
-voice_emotion/
-├── dataset/              ← place RAVDESS Actor folders here
-├── extract_features.py   ← extracts MFCC, Chroma, Mel features from audio
-├── train.py              ← trains MLP model and saves model.pkl
-├── predict.py            ← records mic input and predicts emotion
-├── model.pkl             ← generated after training (do not manually edit)
-└── requirements.txt      ← Python dependencies
+├── Anshu-RAVDESS/       ← CNN, CNN-LSTM, CNN-LSTM+Attention, Random Forest on RAVDESS
+├── Arpit-CREMA/         ← CNN-LSTM on CREMA-D
+├── Durgesh-SAVEE/       ← SVM on SAVEE
+├── Shantam-RAVDESS/     ← Ensemble (MLP + SVM + RF) on RAVDESS
+├── Keshav-CREMA/        ← RNN on CREMA-D
 ```
 
 ---
 
-## Troubleshooting
+## Contributors & Models
 
-| Problem | Fix |
-|---|---|
-| `model.pkl not found` | Run `python train.py` first |
-| No files found during training | Check that Actor folders are directly inside `dataset/` |
-| Sounddevice error on Linux | Run `sudo apt install portaudio19-dev` |
-| Always predicts FEARFUL | Add `sample_weight='balanced'` in train.py and retrain |
-| Low accuracy | Use all 24 actors, or add TESS/CREMA-D dataset |
+### Anshu — `Anshu-RAVDESS/`
+- Dataset: RAVDESS (8 emotions, 24 actors)
+- Models tried: CNN → CNN-LSTM → CNN-LSTM + Attention, Random Forest
+- Best accuracy: ~93% (CNN-LSTM + Attention)
+- Outputs: saved `.keras` models, normalization/scaler pickles, per-model output folders
+- How: Iteratively improved architecture from a basic CNN up to a CNN-LSTM with an attention layer. Features: MFCC + Delta + Chroma.
+
+### Arpit — `Arpit-CREMA/`
+- Dataset: CREMA-D (6 emotions, 7442 clips)
+- Model: CNN + LSTM (Keras/TensorFlow)
+- Output: `emotion_model.h5`
+- How: Extracts MFCC + Delta + Delta² + Chroma, pads to 160 frames, applies noise/shift augmentation, trains with class weights and LR reduction.
+
+### Durgesh — `Durgesh-SAVEE/`
+- Dataset: SAVEE (7 emotions, 480 clips)
+- Model: SVM with GridSearchCV (RBF + Poly kernels, C/gamma tuning)
+- Accuracy: ~80.21%
+- Output: `model.pkl` (model + scaler + label encoder)
+- How: Extracts 471-feature vector (MFCC, Delta, Chroma, Mel, Tonnetz, ZCR, RMS, Spectral), scales with StandardScaler, finds best SVM params via 5-fold CV.
+
+### Shantam — `Shantam-RAVDESS/`
+- Dataset: RAVDESS (5 emotions)
+- Model: Soft-voting Ensemble — MLP + SVM + Random Forest
+- Accuracy: ~86%
+- Output: `model.pkl`
+- How: Extracts rich feature vector (MFCC + Delta + Delta² + Chroma + Mel + ZCR + Spectral Contrast + Rolloff, mean + std), trains three classifiers and combines via soft voting. Supports live mic prediction.
+
+### Keshav — `Keshav-CREMA/`
+- Dataset: CREMA-D (6 emotions)
+- Model: RNN (Recurrent Neural Network)
+- Output: `emotion_rnn_model.h5`, `confusion_matrix.png`, `training_curves.png`, `training_report.html`
+- Note: developed on a separate branch (`keshav`), never merged to main
+- How: RNN-based sequential model with saved label encoder and scaler for inference.
 
 ---
 
-## How It Works
+## Datasets
 
-1. **Feature Extraction** — For each audio clip, we extract MFCC (captures timbre/tone), Chroma (pitch class), and Mel Spectrogram (energy distribution across frequencies). Mean and standard deviation of each are concatenated into a feature vector.
+| Dataset | Clips | Emotions | Link |
+|---|---|---|---|
+| RAVDESS | 7,356 | 8 | https://zenodo.org/record/1188976 |
+| CREMA-D | 7,442 | 6 | https://github.com/CheyneyComputerScience/CREMA-D |
+| SAVEE | 480 | 7 | http://kahlan.eps.surrey.ac.uk/savee/ |
 
-2. **Model** — A Multi-Layer Perceptron (MLP) with layers `[256 → 128 → 64]` is trained on these features using backpropagation. Early stopping prevents overfitting.
+Place dataset files under a `dataset/` folder inside the relevant contributor folder before running training scripts.
 
-3. **Prediction** — Live mic audio is recorded, features are extracted the same way, scaled, and passed through the trained model to output an emotion label.
+---
+
+## Accuracy Summary
+
+| Contributor | Model | Dataset | Accuracy |
+|---|---|---|---|
+| Anshu | CNN-LSTM + Attention | RAVDESS | ~93% |
+| Shantam | Ensemble (MLP+SVM+RF) | RAVDESS | ~86% |
+| Durgesh | SVM | SAVEE | ~80% |
+| Arpit | CNN-LSTM | CREMA-D | — |
+| Keshav | RNN | CREMA-D | — |
+
+---
+
+## Requirements
+
+Each folder has its own `requirements.txt`. Common dependencies:
+
+```bash
+pip install librosa scikit-learn numpy tensorflow sounddevice
+```
