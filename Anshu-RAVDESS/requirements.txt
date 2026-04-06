@@ -8,7 +8,7 @@ soundfile
 
 scikit-learn
 
-tensorflow
+tensorflow==2.13
 sounddevice
 
 joblib
