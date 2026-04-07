@@ -54,14 +54,25 @@ def _predict_keras(model_key, cfg, features, feature_fn):
         # already (1, 160, 92) from extractor
         features = features.astype(np.float32)
 
+    elif feature_fn in ("anshu", "anshu_131"):
+        # features shape: (200, n_features) — normalize with dict {mean, std}
+        scaler = load_scaler(model_key, cfg)
+        if scaler is not None:
+            if isinstance(scaler, dict):
+                mean = np.array(scaler["mean"])  # (1, 1, n_features)
+                std  = np.array(scaler["std"])   # (1, 1, n_features)
+                features = (features - mean.squeeze()) / (std.squeeze() + 1e-8)
+            else:
+                features = scaler.transform(features)
+        features = features.astype(np.float32)[np.newaxis, ...]  # (1, 200, n_features)
+
     else:
-        # anshu: flat vector — scale then reshape for CNN input
+        # fallback: flat vector — scale then add batch dim
         scaler = load_scaler(model_key, cfg)
         if scaler is not None:
             features = scaler.transform([features])
         else:
             features = features.reshape(1, -1)
-        # Keras CNN/LSTM expects (batch, timesteps, features) or (batch, features, 1)
         features = features.astype(np.float32)
 
     probs = model.predict(features, verbose=0)[0]
@@ -71,12 +82,11 @@ def _predict_keras(model_key, cfg, features, feature_fn):
     # Resolve label
     encoder = load_encoder(model_key, cfg)
     if encoder is not None:
-        # Could be a LabelEncoder or a dict (emotion_map)
         if hasattr(encoder, "inverse_transform"):
             label = encoder.inverse_transform([idx])[0]
         elif isinstance(encoder, dict):
-            # emotion_map: {int: str} or {str: int}
-            inv = {v: k for k, v in encoder.items()} if isinstance(list(encoder.keys())[0], str) else encoder
+            # emotion_map is {emotion_str: int_index} — invert it
+            inv = {v: k for k, v in encoder.items()}
             label = inv.get(idx, cfg["emotions"][idx] if idx < len(cfg["emotions"]) else str(idx))
         else:
             label = cfg["emotions"][idx]

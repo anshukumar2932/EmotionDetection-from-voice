@@ -13,7 +13,7 @@ from fastapi.responses import JSONResponse
 
 from api.config import MODEL_REGISTRY, DEFAULT_MODEL, MAX_UPLOAD_MB, ALLOWED_EXTENSIONS
 from api.services.predictor import predict
-from api.utils.dataset import get_random_sample_for_model
+from api.utils.dataset import get_random_sample_for_model, decode_label
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
@@ -46,7 +46,7 @@ router = APIRouter()
     },
 )
 async def predict_emotion(
-    file: Optional[UploadFile] = File(
+    audio: Optional[UploadFile] = File(
         default=None,
         description="Audio file to analyse (.wav, .mp3, .flac, .ogg, .m4a). "
                     "If omitted, a random sample is picked from the dataset.",
@@ -82,9 +82,9 @@ async def predict_emotion(
     tmp_path = None
     input_type = "uploaded"
 
-    if file is not None:
+    if audio is not None:
         # Validate extension
-        ext = os.path.splitext(file.filename or "")[-1].lower()
+        ext = os.path.splitext(audio.filename or "")[-1].lower()
         if ext not in ALLOWED_EXTENSIONS:
             raise HTTPException(
                 status_code=400,
@@ -93,7 +93,7 @@ async def predict_emotion(
             )
 
         # Validate size
-        contents = await file.read()
+        contents = await audio.read()
         if len(contents) > MAX_UPLOAD_MB * 1024 * 1024:
             raise HTTPException(
                 status_code=400,
@@ -135,11 +135,16 @@ async def predict_emotion(
     latency_ms = round((time.perf_counter() - start) * 1000, 2)
     logger.info("model=%s emotion=%s confidence=%.3f latency_ms=%.1f", model, emotion, confidence, latency_ms)
 
+    actual_emotion = decode_label(audio_path, cfg["dataset"])
+
     return {
         "success": True,
         "model_used": model,
         "input_type": input_type,
         "predicted_emotion": emotion,
+        "actual_emotion": actual_emotion,
+        "is_correct": (actual_emotion == emotion.lower()) if actual_emotion else None,
         "confidence": round(confidence, 4),
         "latency_ms": latency_ms,
+        "audio_filename": os.path.basename(audio_path),
     }

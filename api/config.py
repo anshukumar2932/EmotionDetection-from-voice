@@ -2,8 +2,16 @@
 Central configuration: model registry, dataset paths, emotion labels.
 """
 import os
+from dotenv import load_dotenv
+
+load_dotenv()
 
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+
+# ── Server Configuration ─────────────────────────────────────────────────────────
+HOST = os.getenv("API_HOST", "0.0.0.0")
+PORT = int(os.getenv("API_PORT", "8000"))
+DEBUG = os.getenv("API_DEBUG", "false").lower() == "true"
 
 # ── Model registry ────────────────────────────────────────────────────────────
 # Each entry describes how to load and run a model.
@@ -25,7 +33,7 @@ MODEL_REGISTRY = {
         "model_path": os.path.join(BASE_DIR, "Anshu-RAVDESS", "cnn_lstm_output", "best_model.keras"),
         "scaler_path": os.path.join(BASE_DIR, "Anshu-RAVDESS", "cnn_lstm_output", "normalization.pkl"),
         "encoder_path": os.path.join(BASE_DIR, "Anshu-RAVDESS", "cnn_lstm_output", "emotion_map.pkl"),
-        "feature_fn": "anshu",
+        "feature_fn": "anshu_131",
         "dataset": "ravdess",
         "accuracy": 0.88,
         "emotions": ["angry", "calm", "disgust", "fearful", "happy", "neutral", "sad", "surprised"],
@@ -55,7 +63,7 @@ MODEL_REGISTRY = {
     "arpit_cnn_lstm": {
         "display_name": "Arpit CNN-LSTM (CREMA-D)",
         "type": "h5",
-        "model_path": os.path.join(BASE_DIR, "Arpit-CREMA", "emotion_model.h5"),
+        "model_path": os.path.join(BASE_DIR, "Arpit-CREMA", "emotion_model_crema.h5"),
         "scaler_path": None,
         "encoder_path": None,
         "feature_fn": "arpit",
@@ -101,20 +109,18 @@ MODEL_REGISTRY = {
 DEFAULT_MODEL = "anshu_cnn_lstm_attention"
 
 # ── Dataset paths ─────────────────────────────────────────────────────────────
+DATASET_BASE = os.getenv("DATASET_PATH", "/media/anshu/New Volume/Dataset")
+
 DATASET_PATHS = {
     "ravdess": [
-        os.path.join(BASE_DIR, "dataset", "RAVDESS"),
-        os.path.join(BASE_DIR, "dataset", "Actor_*"),
-        os.path.join(BASE_DIR, "RAVDESS"),
+        os.path.join(DATASET_BASE, "Audio_Speech_Actors_01-24"),
+        os.path.join(DATASET_BASE, "Audio_Song_Actors_01-24"),
     ],
     "crema": [
-        os.path.join(BASE_DIR, "dataset", "Crema"),
-        os.path.join(BASE_DIR, "dataset", "AudioWAV"),
-        os.path.join(BASE_DIR, "AudioWAV"),
+        os.path.join(DATASET_BASE, "Crema"),
     ],
     "savee": [
-        os.path.join(BASE_DIR, "dataset", "ALL"),
-        os.path.join(BASE_DIR, "SAVEE"),
+        os.path.join(DATASET_BASE, "SAVEE"),
     ],
 }
 

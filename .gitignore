@@ -215,3 +215,33 @@ marimo/_lsp/
 __marimo__/
 
 ravdess/
+
+# ── Project specific ──────────────────────────────────────────────
+# Virtual environment
+venv/
+
+# Datasets (large binary files)
+dataset/
+/media/
+
+# Logs
+*.log
+api/server.log
+
+# Expo / React Native
+Frontend/node_modules/
+Frontend/.expo/web/cache/
+Frontend/android/build/
+Frontend/android/.gradle/
+Frontend/android/app/build/
+Frontend/.expo/web/
+
+# Environment files with secrets
+.env
+Frontend/.env
+
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
+.ipynb_checkpoints/

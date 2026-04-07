@@ -7,34 +7,53 @@ import librosa
 
 
 # ── Anshu (RAVDESS) ───────────────────────────────────────────────────────────
-# MFCC(40) + Delta + Delta² + Chroma + Mel + Spectral Contrast + Tonnetz + ZCR + RMS
-# Returns mean+std aggregated flat vector.
+# Two variants based on model input shape:
+#   cnn_lstm_attention → (200, 195): mfcc40+delta+delta2+chroma12+contrast7+tonnetz6+zcr+rms+mel48
+#   cnn_lstm           → (200, 131): mfcc40+delta+delta2+chroma11
+# Both return shape (MAX_FRAMES, n_features) — normalization applied in predictor.
 
-def extract_anshu(file_path: str) -> np.ndarray:
+MAX_FRAMES = 200
+
+def _anshu_sequence(file_path: str, n_features_target: int) -> np.ndarray:
     audio, sr = librosa.load(file_path, sr=22050)
     audio = librosa.util.normalize(audio)
 
     mfcc     = librosa.feature.mfcc(y=audio, sr=sr, n_mfcc=40)
     delta    = librosa.feature.delta(mfcc)
     delta2   = librosa.feature.delta(mfcc, order=2)
-    chroma   = librosa.feature.chroma_stft(y=audio, sr=sr)
-    mel      = librosa.feature.melspectrogram(y=audio, sr=sr, n_mels=128)
-    contrast = librosa.feature.spectral_contrast(y=audio, sr=sr)
-    tonnetz  = librosa.feature.tonnetz(y=librosa.effects.harmonic(audio), sr=sr)
-    zcr      = librosa.feature.zero_crossing_rate(audio)
-    rms      = librosa.feature.rms(y=audio)
 
-    return np.concatenate([
-        np.mean(mfcc,     axis=1), np.std(mfcc,     axis=1),
-        np.mean(delta,    axis=1), np.std(delta,    axis=1),
-        np.mean(delta2,   axis=1), np.std(delta2,   axis=1),
-        np.mean(chroma,   axis=1), np.std(chroma,   axis=1),
-        np.mean(mel,      axis=1), np.std(mel,      axis=1),
-        np.mean(contrast, axis=1), np.std(contrast, axis=1),
-        np.mean(tonnetz,  axis=1), np.std(tonnetz,  axis=1),
-        [np.mean(zcr)],            [np.std(zcr)],
-        [np.mean(rms)],            [np.std(rms)],
-    ])
+    if n_features_target == 131:
+        # mfcc(40) + delta(40) + delta2(40) + chroma(11) = 131
+        chroma = librosa.feature.chroma_stft(y=audio, sr=sr, n_chroma=11)
+        stacked = np.vstack([mfcc, delta, delta2, chroma])  # (131, frames)
+    else:
+        # mfcc(40)+delta(40)+delta2(40)+chroma(12)+contrast(7)+tonnetz(6)+zcr(1)+rms(1)+mel48(48) = 195
+        chroma   = librosa.feature.chroma_stft(y=audio, sr=sr)
+        contrast = librosa.feature.spectral_contrast(y=audio, sr=sr)
+        tonnetz  = librosa.feature.tonnetz(y=librosa.effects.harmonic(audio), sr=sr)
+        zcr      = librosa.feature.zero_crossing_rate(audio)
+        rms      = librosa.feature.rms(y=audio)
+        mel48    = librosa.power_to_db(librosa.feature.melspectrogram(y=audio, sr=sr, n_mels=48))
+        stacked  = np.vstack([mfcc, delta, delta2, chroma, contrast, tonnetz, zcr, rms, mel48])  # (195, frames)
+
+    # Transpose to (frames, features), pad/truncate to MAX_FRAMES
+    seq = stacked.T  # (frames, n_features)
+    if seq.shape[0] < MAX_FRAMES:
+        seq = np.pad(seq, ((0, MAX_FRAMES - seq.shape[0]), (0, 0)))
+    else:
+        seq = seq[:MAX_FRAMES]
+
+    return seq.astype(np.float32)  # (200, n_features)
+
+
+def extract_anshu(file_path: str) -> np.ndarray:
+    """Default — returns (200, 195) for cnn_lstm_attention."""
+    return _anshu_sequence(file_path, 195)
+
+
+def extract_anshu_131(file_path: str) -> np.ndarray:
+    """Returns (200, 131) for cnn_lstm."""
+    return _anshu_sequence(file_path, 131)
 
 
 # ── Arpit (CREMA-D) ───────────────────────────────────────────────────────────
@@ -138,11 +157,12 @@ def extract_shantam(file_path: str) -> np.ndarray:
 # ── Dispatcher ────────────────────────────────────────────────────────────────
 
 _EXTRACTORS = {
-    "anshu":   extract_anshu,
-    "arpit":   extract_arpit,
-    "durgesh": extract_durgesh,
-    "keshav":  extract_keshav,
-    "shantam": extract_shantam,
+    "anshu":     extract_anshu,
+    "anshu_131": extract_anshu_131,
+    "arpit":     extract_arpit,
+    "durgesh":   extract_durgesh,
+    "keshav":    extract_keshav,
+    "shantam":   extract_shantam,
 }
 
 

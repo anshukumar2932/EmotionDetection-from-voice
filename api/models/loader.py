@@ -23,9 +23,14 @@ def load_model(model_key: str, cfg: dict) -> Any:
     path = cfg["model_path"]
 
     if model_type in ("keras", "h5"):
-        # Import here to avoid loading TF at startup
-        from tensorflow.keras.models import load_model as keras_load
-        model = keras_load(path)
+        # .keras files use the new Keras 3 format
+        # .h5 files are legacy Keras 2 — must use tf.keras with compile=False
+        if model_type == "h5":
+            import tensorflow as tf
+            model = tf.keras.models.load_model(path, compile=False)
+        else:
+            from tensorflow.keras.models import load_model as keras_load
+            model = keras_load(path)
 
     elif model_type == "pkl_bundle":
         with open(path, "rb") as f:
